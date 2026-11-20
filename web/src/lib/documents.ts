@@ -86,6 +86,10 @@ export type DeleteResult =
   | { ok: true }
   | { ok: false; code: "FORBIDDEN" | "NOT_FOUND"; error: string };
 
+type AccessResult =
+  | { ok: true; document: PaperDocument }
+  | { ok: false; code: "FORBIDDEN" | "NOT_FOUND"; error: string };
+
 export type DocumentVersion = {
   id: string;
   documentId: string;
@@ -448,7 +452,7 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
     );
   }
 
-  function requireAccessible(userId: string, documentId: string): EditResult {
+  function requireAccessible(userId: string, documentId: string): AccessResult {
     const existing = selectById.get(documentId.trim()) as DocumentRow | undefined;
     if (!existing) {
       return {

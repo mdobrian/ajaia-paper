@@ -26,7 +26,7 @@ export async function GET(
     format,
   });
 
-  return new Response(file.body, {
+  return new Response(Buffer.from(file.body), {
     headers: {
       "Content-Type": file.contentType,
       "Content-Disposition": `attachment; filename="${file.filename}"`,
