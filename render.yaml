@@ -4,8 +4,8 @@ services:
     name: ajaia-paper
     runtime: docker
     plan: free
-    dockerfilePath: ./web/Dockerfile
-    dockerContext: ./web
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /login
     envVars:
       - key: SESSION_SECRET

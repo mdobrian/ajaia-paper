@@ -16,7 +16,7 @@ Open http://localhost:3000
 
 Sign in with a seeded account below. Data is stored in a local Docker volume named `paper-data`, so refresh and restart keep documents. Stop with `Ctrl+C`, or `docker compose down`.
 
-The assignment prompt asked for a live URL. This project ships a local Docker run instead: SQLite needs a real disk, and a container is the smallest honest way to give you that without a hosted database or a public deployment.
+Live demo for Ajaia: a separate Render web service built from the repo-root Dockerfile. Do not deploy this onto the existing StudLab service.
 
 ## For local development (npm)
 
