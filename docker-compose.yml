@@ -1,0 +1,16 @@
+# Reviewers: from the repo root, run `docker compose up --build`
+# then open http://localhost:3000
+services:
+  paper:
+    build:
+      context: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      SESSION_SECRET: paper-local-compose-secret
+      DATA_DIR: /data
+    volumes:
+      - paper-data:/data
+
+volumes:
+  paper-data:

@@ -1,0 +1,16 @@
+# New Render service only. Do not attach this to the existing StudLab app.
+services:
+  - type: web
+    name: ajaia-paper
+    runtime: docker
+    plan: free
+    dockerfilePath: ./web/Dockerfile
+    dockerContext: ./web
+    healthCheckPath: /login
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATA_DIR
+        value: /data
+      - key: NODE_ENV
+        value: production
