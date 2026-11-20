@@ -9,6 +9,8 @@ Record 3–5 minutes covering:
 - Share with jordan@ajaia.test
 - Sign in as Jordan and show Shared with me (slate blue vs Alex’s forest green owned cards)
 - Add a comment on a selected phrase; show it in the sidebar
+- Resolve with a short written response (any text, not a magic phrase)
+- Only the commenter can delete a comment, and they type delete to confirm
 - Open version history if time
 - What was deprioritized (realtime, viewer/editor roles, .docx)
 - Key decisions (SQLite, import-as-conversion, Render instead of Vercel)

@@ -115,6 +115,7 @@ export type PaperComment = {
   anchorId: string;
   createdAt: string;
   resolvedAt: string | null;
+  resolveNote: string;
 };
 
 export type CommentResult =
@@ -191,6 +192,7 @@ export type DocumentStore = {
     userId: string;
     documentId: string;
     commentId: string;
+    note: string;
   }): CommentResult;
   deleteComment(input: {
     userId: string;
@@ -263,9 +265,17 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
       quote TEXT NOT NULL DEFAULT '',
       anchor_id TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL,
-      resolved_at TEXT
+      resolved_at TEXT,
+      resolve_note TEXT NOT NULL DEFAULT ''
     );
   `);
+  try {
+    db.exec(
+      `ALTER TABLE comments ADD COLUMN resolve_note TEXT NOT NULL DEFAULT ''`,
+    );
+  } catch {
+    // Column already exists on databases created after the comments table.
+  }
 
   const insertUser = db.prepare(
     `INSERT INTO users (id, email, name, password_hash) VALUES (?, ?, ?, ?)`,
@@ -361,7 +371,7 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
     WHERE comments.id = ?
   `);
   const resolveCommentRow = db.prepare(
-    `UPDATE comments SET resolved_at = ? WHERE id = ?`,
+    `UPDATE comments SET resolved_at = ?, resolve_note = ? WHERE id = ?`,
   );
   const deleteCommentRow = db.prepare(`DELETE FROM comments WHERE id = ?`);
   const deleteCommentsForDocument = db.prepare(
@@ -377,6 +387,7 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
     anchor_id: string;
     created_at: string;
     resolved_at: string | null;
+    resolve_note: string;
     author_name: string;
     author_email: string;
   };
@@ -393,6 +404,7 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
       anchorId: row.anchor_id,
       createdAt: row.created_at,
       resolvedAt: row.resolved_at,
+      resolveNote: row.resolve_note ?? "",
     };
   }
 
@@ -920,6 +932,7 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
         anchorId: (anchorId ?? "").trim(),
         createdAt: new Date().toISOString(),
         resolvedAt: null,
+        resolveNote: "",
       };
       insertComment.run(
         comment.id,
@@ -944,10 +957,18 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
       return { ok: true, comments };
     },
 
-    resolveComment({ userId, documentId, commentId }) {
+    resolveComment({ userId, documentId, commentId, note }) {
       const access = requireAccessible(userId, documentId);
       if (!access.ok) {
         return access;
+      }
+      const trimmedNote = note.trim();
+      if (!trimmedNote) {
+        return {
+          ok: false,
+          code: "COMMENT_REQUIRED",
+          error: "A resolve response is required.",
+        };
       }
       const row = selectCommentById.get(commentId.trim()) as CommentRow | undefined;
       if (!row || row.document_id !== access.document.id) {
@@ -959,9 +980,16 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
       }
       const resolvedAt = row.resolved_at ?? new Date().toISOString();
       if (!row.resolved_at) {
-        resolveCommentRow.run(resolvedAt, row.id);
+        resolveCommentRow.run(resolvedAt, trimmedNote, row.id);
       }
-      return { ok: true, comment: { ...rowToComment(row), resolvedAt } };
+      return {
+        ok: true,
+        comment: {
+          ...rowToComment(row),
+          resolvedAt,
+          resolveNote: row.resolved_at ? row.resolve_note : trimmedNote,
+        },
+      };
     },
 
     deleteComment({ userId, documentId, commentId }) {
@@ -981,12 +1009,11 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
           error: "Comment not found.",
         };
       }
-      const actor = userId.trim();
-      if (row.author_id !== actor && access.document.ownerId !== actor) {
+      if (row.author_id !== userId.trim()) {
         return {
           ok: false,
           code: "FORBIDDEN",
-          error: "Only the commenter or owner can delete this comment.",
+          error: "Only the commenter can delete this comment.",
         };
       }
       deleteCommentRow.run(row.id);

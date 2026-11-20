@@ -27,7 +27,8 @@ Live URL may take up to a minute on first load if Render’s free instance was a
 - Import `.txt` and `.md` into a new document; optional markdown inspect/repair on upload
 - Owner shares by email; owned vs shared lists (forest green vs slate blue)
 - SQLite persistence across refresh
-- Supplemental: delete (type `delete` to confirm), unshare, leave (type `leave` to confirm), duplicate, export `.md` / `.txt` / PDF, version history, comments
+- Supplemental: delete (type `delete` to confirm), unshare, leave (type `leave` to confirm), duplicate, export `.md` / `.txt` / PDF, version history
+- Comments: anyone with access can comment; resolve with a written response; only the commenter can delete (type `delete`)
 - Automated tests: `cd web && npm test` (86 offline Vitest tests)
 
 ## What is incomplete

@@ -78,7 +78,7 @@ describe("comments", () => {
     expect(listed.comments[0]?.authorId).toBe(jordan.id);
   });
 
-  it("lets anyone with access comment or resolve, and only author or owner delete", () => {
+  it("lets anyone with access comment or resolve, and only the commenter delete", () => {
     store = createDocumentStore();
     const { alex, jordan, sam } = seed(store);
     const created = store.createDocument({ ownerId: alex.id });
@@ -119,6 +119,16 @@ describe("comments", () => {
         userId: alex.id,
         documentId: created.document.id,
         commentId: posted.comment.id,
+        note: "   ",
+      }),
+    ).toMatchObject({ ok: false, code: "COMMENT_REQUIRED" });
+
+    expect(
+      store.resolveComment({
+        userId: alex.id,
+        documentId: created.document.id,
+        commentId: posted.comment.id,
+        note: "Looks good, thanks",
       }),
     ).toMatchObject({ ok: true });
 
@@ -129,10 +139,23 @@ describe("comments", () => {
     expect(resolved.ok).toBe(true);
     if (!resolved.ok) return;
     expect(resolved.comments[0]?.resolvedAt).toEqual(expect.any(String));
+    expect(resolved.comments[0]?.resolveNote).toBe("Looks good, thanks");
 
     expect(
       store.deleteComment({
         userId: alex.id,
+        documentId: created.document.id,
+        commentId: posted.comment.id,
+      }),
+    ).toMatchObject({
+      ok: false,
+      code: "FORBIDDEN",
+      error: "Only the commenter can delete this comment.",
+    });
+
+    expect(
+      store.deleteComment({
+        userId: jordan.id,
         documentId: created.document.id,
         commentId: posted.comment.id,
       }),

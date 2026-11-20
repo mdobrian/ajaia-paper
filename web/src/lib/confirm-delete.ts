@@ -1,6 +1,6 @@
 /**
- * Owner delete and recipient leave both remove access the user can see.
- * A stray click is not enough; the UI requires typing the matching word.
+ * Destructive or closing actions require typing a phrase so a stray click
+ * cannot finish them.
  */
 export const DELETE_CONFIRM_WORD = "delete";
 export const LEAVE_CONFIRM_WORD = "leave";

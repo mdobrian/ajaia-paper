@@ -25,7 +25,7 @@ Local npm uses `web/data/paper.db`. Docker and Render use `DATA_DIR=/data`.
 - Owner delete (Are you sure? plus type `delete`), owner unshare with a recipient list, recipient leave (type `leave`), duplicate
 - Export to `.md` / `.txt` / a small text PDF (not a print-preview of TipTap)
 - Snapshot version history on body changes; title-only edits update the latest snapshot
-- Comments: `author_id` + `document_id`, TipTap mark (not character offsets) plus a sidebar. Anyone with access can comment or resolve; only the commenter or owner can delete
+- Comments: `author_id` + `document_id`, TipTap mark (not character offsets) plus a sidebar. Anyone with access can comment. Resolve requires a short written response. Only the commenter can delete, and they type `delete` to confirm.
 - Markdown inspect/repair against the subset Paper actually converts
 
 ## What we cut
@@ -51,7 +51,10 @@ web/src/lib/markdown-structure.ts   inspect/repair the subset Paper converts
 web/src/lib/export-file.ts          stored HTML → .md / .txt / text PDF
 web/src/lib/documents.ts            SQLite users, documents, shares, versions, comments
 web/src/lib/store.ts                process-wide DB + seed accounts
+web/src/lib/confirm-delete.ts       typed confirm for delete / leave
 web/src/components/CommentAnchor.ts TipTap mark keyed by comment id
+web/src/components/ConfirmTypedDialog.tsx  type `delete` / `leave`
+web/src/components/ConfirmNoteDialog.tsx   resolve requires a written response
 web/src/app/api/*                   HTTP for login, documents, import, share, export, versions, comments
 web/src/app/login                   seeded login
 web/src/app/page.tsx                owned vs shared library

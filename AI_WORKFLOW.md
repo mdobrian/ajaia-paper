@@ -32,7 +32,7 @@ This take-home was built in Cursor. AI was used as a pair-programmer, not as a s
   - import, sharing, editing
   - markdown inspect/repair
   - export (including PDF)
-  - versions and comments
+  - versions and comments (author-only delete; resolve stores a written response)
   - reviewer journey (upload a `.txt`, share it, recipient sees it only under Shared with me)
   - full product journey (broken markdown → repair import → PDF → duplicate → rename → share → comment)
 - Live check on https://ajaia-paper.onrender.com: sign in as Alex, import, share with Jordan, confirm Jordan’s Shared with me list

@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/current-user";
 import { getStore } from "@/lib/store";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; commentId: string }> },
 ) {
   const user = await requireUser();
@@ -11,10 +11,12 @@ export async function POST(
   }
 
   const { id, commentId } = await params;
+  const payload = (await request.json().catch(() => ({}))) as { note?: unknown };
   const result = getStore().resolveComment({
     userId: user.id,
     documentId: id,
     commentId,
+    note: typeof payload.note === "string" ? payload.note : "",
   });
   if (!result.ok) {
     const status =

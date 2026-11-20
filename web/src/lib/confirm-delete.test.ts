@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isDeleteConfirmation,
-  isLeaveConfirmation,
-} from "./confirm-delete";
+import { isDeleteConfirmation, isLeaveConfirmation } from "./confirm-delete";
 
 describe("typed confirmations", () => {
   it("accepts delete and leave, ignoring case and surrounding spaces", () => {

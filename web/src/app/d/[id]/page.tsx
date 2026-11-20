@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ConfirmNoteDialog } from "@/components/ConfirmNoteDialog";
 import { ConfirmTypedDialog } from "@/components/ConfirmTypedDialog";
 import {
   DELETE_CONFIRM_WORD,
@@ -40,6 +41,10 @@ export default function DocumentPage() {
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [pendingLeave, setPendingLeave] = useState(false);
+  const [pendingCommentDelete, setPendingCommentDelete] =
+    useState<PaperComment | null>(null);
+  const [pendingCommentResolve, setPendingCommentResolve] =
+    useState<PaperComment | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -192,10 +197,15 @@ export default function DocumentPage() {
     await refreshComments();
   }
 
-  async function resolveComment(commentId: string) {
+  async function resolveComment(comment: PaperComment, note: string) {
+    setPendingCommentResolve(null);
     const response = await fetch(
-      `/api/documents/${params.id}/comments/${commentId}/resolve`,
-      { method: "POST" },
+      `/api/documents/${params.id}/comments/${comment.id}/resolve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note }),
+      },
     );
     if (!response.ok) {
       const payload = (await response.json()) as { error?: string };
@@ -205,16 +215,18 @@ export default function DocumentPage() {
     await refreshComments();
   }
 
-  async function removeComment(commentId: string) {
-    const response = await fetch(`/api/documents/${params.id}/comments/${commentId}`, {
-      method: "DELETE",
-    });
+  async function removeComment(comment: PaperComment) {
+    setPendingCommentDelete(null);
+    const response = await fetch(
+      `/api/documents/${params.id}/comments/${comment.id}`,
+      { method: "DELETE" },
+    );
     if (!response.ok) {
       const payload = (await response.json()) as { error?: string };
       setError(payload.error ?? "Could not delete comment.");
       return;
     }
-    if (activeCommentId === commentId) {
+    if (activeCommentId === comment.id) {
       setActiveCommentId(null);
     }
     await refreshComments();
@@ -501,7 +513,8 @@ export default function DocumentPage() {
           <h2 className="font-medium">Comments</h2>
           <p className="mt-1 text-sm text-muted">
             Select text and click Comment to attach a thread. Anyone with access can
-            comment. Only the commenter or owner can delete.
+            comment. Resolve with a short response. Only the commenter can delete,
+            and they type delete to confirm.
           </p>
           <form onSubmit={(event) => void submitComment(event)} className="mt-4">
             {commentQuote ? (
@@ -547,22 +560,25 @@ export default function DocumentPage() {
                       <p className="mt-1 text-muted">“{comment.quote}”</p>
                     ) : null}
                     <p className="mt-1">{comment.body}</p>
+                    {comment.resolveNote ? (
+                      <p className="mt-2 text-muted">Resolved: {comment.resolveNote}</p>
+                    ) : null}
                   </button>
                   <div className="mt-2 flex gap-3">
                     {comment.resolvedAt ? null : (
                       <button
                         className="text-accent"
                         type="button"
-                        onClick={() => void resolveComment(comment.id)}
+                        onClick={() => setPendingCommentResolve(comment)}
                       >
                         Resolve
                       </button>
                     )}
-                    {user.id === comment.authorId || isOwner ? (
+                    {user.id === comment.authorId ? (
                       <button
                         className="text-danger"
                         type="button"
-                        onClick={() => void removeComment(comment.id)}
+                        onClick={() => setPendingCommentDelete(comment)}
                       >
                         Delete
                       </button>
@@ -594,6 +610,26 @@ export default function DocumentPage() {
           busy={busy}
           onCancel={() => setPendingLeave(false)}
           onConfirm={() => void leave()}
+        />
+      ) : null}
+      {pendingCommentDelete ? (
+        <ConfirmTypedDialog
+          word={DELETE_CONFIRM_WORD}
+          heading="Delete this comment?"
+          description={`Only you can delete this comment. Type ${DELETE_CONFIRM_WORD} to confirm.`}
+          confirmLabel="Delete"
+          onCancel={() => setPendingCommentDelete(null)}
+          onConfirm={() => void removeComment(pendingCommentDelete)}
+        />
+      ) : null}
+      {pendingCommentResolve ? (
+        <ConfirmNoteDialog
+          heading="Resolve this comment?"
+          description="Add a short response so others know why it is closed."
+          confirmLabel="Resolve"
+          placeholder="I fixed it, looks good, leftover is in the next draft…"
+          onCancel={() => setPendingCommentResolve(null)}
+          onConfirm={(note) => void resolveComment(pendingCommentResolve, note)}
         />
       ) : null}
     </main>

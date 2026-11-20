@@ -31,7 +31,8 @@ Owned cards are forest green (**Yours**). Shared cards are slate blue (**Shared*
 - Seeded login and email sharing; only the owner can share; recipients can edit
 - Owned vs shared lists, color-coded
 - SQLite persistence across refresh
-- Supplemental: owner delete (type `delete` to confirm), owner unshare, recipient leave (type `leave` to confirm), duplicate, export `.md` / `.txt` / PDF, snapshot version history, comments (author + document, TipTap mark + sidebar)
+- Supplemental: owner delete (type `delete` to confirm), owner unshare, recipient leave (type `leave` to confirm), duplicate, export `.md` / `.txt` / PDF, snapshot version history
+- Comments: anyone with access can comment; resolve by writing a short response (saved on the comment); only the commenter can delete, and they type `delete` to confirm
 
 Intentionally out of scope: real-time collaboration, viewer-vs-editor roles, suggestion mode, `.docx` import, Drive uploads.
 
