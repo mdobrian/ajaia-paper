@@ -8,6 +8,10 @@
   --rule: #e4d9c8;
   --accent: #25534a;
   --accent-soft: #dce8e4;
+  --owned: #25534a;
+  --owned-soft: #cfe4dc;
+  --shared: #3f4d78;
+  --shared-soft: #d5daf0;
   --danger: #8f2d2d;
 }
 
@@ -19,10 +23,38 @@
   --color-rule: var(--rule);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-owned: var(--owned);
+  --color-owned-soft: var(--owned-soft);
+  --color-shared: var(--shared);
+  --color-shared-soft: var(--shared-soft);
   --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-serif: var(--font-source-serif);
   --font-mono: var(--font-geist-mono);
+}
+
+.doc-card-owned {
+  background: #b7d4c8;
+  border: 1px solid #7aa394;
+  border-left: 8px solid var(--owned);
+}
+
+.doc-card-owned:hover {
+  border-top-color: var(--owned);
+  border-right-color: var(--owned);
+  border-bottom-color: var(--owned);
+}
+
+.doc-card-shared {
+  background: #c5cbe8;
+  border: 1px solid #8b94c2;
+  border-left: 8px solid var(--shared);
+}
+
+.doc-card-shared:hover {
+  border-top-color: var(--shared);
+  border-right-color: var(--shared);
+  border-bottom-color: var(--shared);
 }
 
 html,
@@ -82,6 +114,16 @@ body {
 
 .paper-editor .tiptap li p {
   margin: 0.15em 0;
+}
+
+.paper-editor .tiptap span.comment-anchor {
+  background: #f3e6b0;
+  border-bottom: 2px solid #c9a227;
+  cursor: pointer;
+}
+
+.paper-editor .tiptap span.comment-anchor.is-active {
+  background: #ffe58a;
 }
 
 .paper-editor .tiptap p.is-editor-empty:first-child::before {

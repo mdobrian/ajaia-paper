@@ -39,7 +39,11 @@ export default function LoginPage() {
         account to try sharing.
       </p>
 
-      <form onSubmit={submit} className="mt-10 flex flex-col gap-4">
+      <form
+        method="post"
+        onSubmit={submit}
+        className="mt-10 flex flex-col gap-4"
+      >
         <label className="flex flex-col gap-1 text-sm">
           Email
           <input

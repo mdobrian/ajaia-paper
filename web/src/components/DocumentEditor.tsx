@@ -1,16 +1,30 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
+import { CommentAnchor } from "./CommentAnchor";
 
 type DocumentEditorProps = {
   initialHtml: string;
   onChange: (html: string) => void;
+  activeCommentId?: string | null;
+  onSelectComment?: (commentId: string) => void;
+  onStartComment?: (input: { commentId: string; quote: string }) => void;
 };
 
-export function DocumentEditor({ initialHtml, onChange }: DocumentEditorProps) {
+export function DocumentEditor({
+  initialHtml,
+  onChange,
+  activeCommentId,
+  onSelectComment,
+  onStartComment,
+}: DocumentEditorProps) {
+  const onSelectCommentRef = useRef(onSelectComment);
+  onSelectCommentRef.current = onSelectComment;
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -19,17 +33,40 @@ export function DocumentEditor({ initialHtml, onChange }: DocumentEditorProps) {
       }),
       Underline,
       Placeholder.configure({ placeholder: "Start writing…" }),
+      CommentAnchor,
     ],
     content: initialHtml,
     editorProps: {
       attributes: {
         class: "min-h-[55vh]",
       },
+      handleClick: (_view, _pos, event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return false;
+        }
+        const anchor = target.closest("[data-comment-id]");
+        const commentId = anchor?.getAttribute("data-comment-id");
+        if (commentId) {
+          onSelectCommentRef.current?.(commentId);
+        }
+        return false;
+      },
     },
     onUpdate: ({ editor: instance }) => {
       onChange(instance.getHTML());
     },
   });
+
+  useEffect(() => {
+    const root = document.querySelector(".paper-editor");
+    root?.querySelectorAll("span.comment-anchor").forEach((node) => {
+      node.classList.toggle(
+        "is-active",
+        node.getAttribute("data-comment-id") === activeCommentId,
+      );
+    });
+  }, [activeCommentId, editor]);
 
   if (!editor) {
     return <p className="text-muted">Loading editor…</p>;
@@ -72,6 +109,19 @@ export function DocumentEditor({ initialHtml, onChange }: DocumentEditorProps) {
           label="Numbers"
           active={editor.isActive("orderedList")}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        />
+        <ToolbarButton
+          label="Comment"
+          active={false}
+          onClick={() => {
+            const { from, to, empty } = editor.state.selection;
+            const commentId = crypto.randomUUID();
+            const quote = empty ? "" : editor.state.doc.textBetween(from, to, " ");
+            if (!empty) {
+              editor.chain().focus().setMark("commentAnchor", { commentId }).run();
+            }
+            onStartComment?.({ commentId: empty ? "" : commentId, quote });
+          }}
         />
       </div>
       <EditorContent editor={editor} />

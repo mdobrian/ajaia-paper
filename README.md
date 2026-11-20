@@ -20,13 +20,22 @@ Password for all accounts: `paper123`
 
 Suggested sharing path: sign in as Alex, open **Welcome to Paper**, share with `jordan@ajaia.test`, sign out, sign in as Jordan. The document should appear under **Shared with me**.
 
+Owned cards are forest green (**Yours**). Shared cards are slate blue (**Shared**).
+
 ## What works
 
-- Create, rename, edit, save, and reopen documents
+- Create, rename, edit, autosave, and reopen documents
 - Rich text: bold, italic, underline, headings, bullets, numbered lists
-- Import `.txt` and `.md` only (Word, PDF, and images are rejected in the UI)
-- Seeded login and email sharing, with owned vs shared lists
+- Import `.txt` and `.md` only (Word, PDF, and images are rejected)
+- Markdown uploads can be inspected and optionally repaired (heading space, list markers, unclosed `**` / fences), then imported as-is or after fix
+- Seeded login and email sharing; only the owner can share; recipients can edit
+- Owned vs shared lists, color-coded
 - SQLite persistence across refresh
+- Supplemental: owner delete, owner unshare, recipient leave, duplicate, export `.md` / `.txt` / PDF, snapshot version history, comments (author + document, TipTap mark + sidebar)
+
+Intentionally out of scope: real-time collaboration, viewer-vs-editor roles, suggestion mode, `.docx` import, Drive uploads.
+
+See `ARCHITECTURE.md`, `AI_WORKFLOW.md`, and `SUBMISSION.md`.
 
 ## Run locally with npm
 
@@ -54,4 +63,4 @@ cd web
 npm test
 ```
 
-Tests stay offline. They do not open a browser or talk to a live service.
+Offline Vitest, 84 tests. They cover import, sharing, editing, markdown inspect/repair, export, versions, comments, and the reviewer journeys. They do not open a browser or talk to a live service.

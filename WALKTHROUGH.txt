@@ -1,0 +1,15 @@
+Walkthrough video URL:
+
+(paste unlisted Loom or YouTube link here after recording)
+
+Record 3–5 minutes covering:
+- Login as Alex
+- Import a .md file; if it is messy, show Fix and import
+- Formatting, then export PDF or Markdown
+- Share with jordan@ajaia.test
+- Sign in as Jordan and show Shared with me (slate blue vs Alex’s forest green owned cards)
+- Add a comment on a selected phrase; show it in the sidebar
+- Open version history if time
+- What was deprioritized (realtime, viewer/editor roles, .docx)
+- Key decisions (SQLite, import-as-conversion, Render instead of Vercel)
+- How AI was used in Cursor

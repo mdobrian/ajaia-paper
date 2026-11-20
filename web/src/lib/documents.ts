@@ -73,6 +73,58 @@ export type Library = {
   shared: PaperDocument[];
 };
 
+export type Recipient = {
+  email: string;
+  name: string;
+};
+
+export type RecipientsResult =
+  | { ok: true; recipients: Recipient[] }
+  | { ok: false; code: "FORBIDDEN" | "NOT_FOUND"; error: string };
+
+export type DeleteResult =
+  | { ok: true }
+  | { ok: false; code: "FORBIDDEN" | "NOT_FOUND"; error: string };
+
+export type DocumentVersion = {
+  id: string;
+  documentId: string;
+  title: string;
+  contentHtml: string;
+  createdAt: string;
+  createdBy: string;
+  createdByName: string;
+};
+
+export type VersionsResult =
+  | { ok: true; versions: DocumentVersion[] }
+  | { ok: false; code: "FORBIDDEN" | "NOT_FOUND"; error: string };
+
+export type PaperComment = {
+  id: string;
+  documentId: string;
+  authorId: string;
+  authorName: string;
+  authorEmail: string;
+  body: string;
+  quote: string;
+  anchorId: string;
+  createdAt: string;
+  resolvedAt: string | null;
+};
+
+export type CommentResult =
+  | { ok: true; comment: PaperComment }
+  | {
+      ok: false;
+      code: "FORBIDDEN" | "NOT_FOUND" | "COMMENT_REQUIRED";
+      error: string;
+    };
+
+export type CommentsResult =
+  | { ok: true; comments: PaperComment[] }
+  | { ok: false; code: "FORBIDDEN" | "NOT_FOUND"; error: string };
+
 export type DocumentStore = {
   createUser(input: {
     email: string;
@@ -86,6 +138,7 @@ export type DocumentStore = {
     ownerId: string;
     filename: string;
     bytes: Uint8Array;
+    repairMarkdown?: boolean;
   }): StoreImportResult;
   getDocument(id: string): PaperDocument | null;
   getAccessibleDocument(userId: string, documentId: string): PaperDocument | null;
@@ -94,6 +147,18 @@ export type DocumentStore = {
     ownerId: string;
     recipientEmail: string;
   }): ShareResult;
+  unshareDocument(input: {
+    documentId: string;
+    ownerId: string;
+    recipientEmail: string;
+  }): ShareResult;
+  listRecipients(input: {
+    userId: string;
+    documentId: string;
+  }): RecipientsResult;
+  deleteDocument(input: { userId: string; documentId: string }): DeleteResult;
+  leaveDocument(input: { userId: string; documentId: string }): DeleteResult;
+  duplicateDocument(input: { userId: string; documentId: string }): EditResult;
   renameDocument(input: {
     userId: string;
     documentId: string;
@@ -104,6 +169,30 @@ export type DocumentStore = {
     documentId: string;
     contentHtml: string;
   }): EditResult;
+  listVersions(input: { userId: string; documentId: string }): VersionsResult;
+  restoreVersion(input: {
+    userId: string;
+    documentId: string;
+    versionId: string;
+  }): EditResult;
+  addComment(input: {
+    userId: string;
+    documentId: string;
+    body: string;
+    quote?: string;
+    anchorId?: string;
+  }): CommentResult;
+  listComments(input: { userId: string; documentId: string }): CommentsResult;
+  resolveComment(input: {
+    userId: string;
+    documentId: string;
+    commentId: string;
+  }): CommentResult;
+  deleteComment(input: {
+    userId: string;
+    documentId: string;
+    commentId: string;
+  }): DeleteResult;
   listLibrary(userId: string): Library;
   listDocumentIds(): string[];
   close(): void;
@@ -154,6 +243,24 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
       created_at TEXT NOT NULL,
       PRIMARY KEY (document_id, user_id)
     );
+    CREATE TABLE IF NOT EXISTS versions (
+      id TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content_html TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      created_by TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS comments (
+      id TEXT PRIMARY KEY,
+      document_id TEXT NOT NULL,
+      author_id TEXT NOT NULL,
+      body TEXT NOT NULL,
+      quote TEXT NOT NULL DEFAULT '',
+      anchor_id TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      resolved_at TEXT
+    );
   `);
 
   const insertUser = db.prepare(
@@ -189,12 +296,157 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
     INSERT OR IGNORE INTO shares (document_id, user_id, created_at)
     VALUES (?, ?, ?)
   `);
+  const deleteShare = db.prepare(
+    `DELETE FROM shares WHERE document_id = ? AND user_id = ?`,
+  );
+  const deleteSharesForDocument = db.prepare(
+    `DELETE FROM shares WHERE document_id = ?`,
+  );
+  const deleteDocumentRow = db.prepare(`DELETE FROM documents WHERE id = ?`);
+  const selectRecipients = db.prepare(`
+    SELECT users.email, users.name
+    FROM shares
+    INNER JOIN users ON users.id = shares.user_id
+    WHERE shares.document_id = ?
+    ORDER BY users.email ASC
+  `);
   const updateTitle = db.prepare(
     `UPDATE documents SET title = ?, updated_at = ? WHERE id = ?`,
   );
   const updateContent = db.prepare(
     `UPDATE documents SET content_html = ?, updated_at = ? WHERE id = ?`,
   );
+  const insertVersion = db.prepare(`
+    INSERT INTO versions (id, document_id, title, content_html, created_at, created_by)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+  const updateVersionTitle = db.prepare(
+    `UPDATE versions SET title = ? WHERE id = ?`,
+  );
+  const selectLatestVersion = db.prepare(`
+    SELECT * FROM versions WHERE document_id = ? ORDER BY rowid DESC LIMIT 1
+  `);
+  const selectVersions = db.prepare(`
+    SELECT versions.*, users.name AS created_by_name
+    FROM versions
+    LEFT JOIN users ON users.id = versions.created_by
+    WHERE versions.document_id = ?
+    ORDER BY versions.rowid DESC
+  `);
+  const selectVersionById = db.prepare(`SELECT * FROM versions WHERE id = ?`);
+  const deleteVersionsForDocument = db.prepare(
+    `DELETE FROM versions WHERE document_id = ?`,
+  );
+  const insertComment = db.prepare(`
+    INSERT INTO comments (
+      id, document_id, author_id, body, quote, anchor_id, created_at, resolved_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+  `);
+  const selectComments = db.prepare(`
+    SELECT comments.*, users.name AS author_name, users.email AS author_email
+    FROM comments
+    INNER JOIN users ON users.id = comments.author_id
+    WHERE comments.document_id = ?
+    ORDER BY comments.rowid ASC
+  `);
+  const selectCommentById = db.prepare(`
+    SELECT comments.*, users.name AS author_name, users.email AS author_email
+    FROM comments
+    INNER JOIN users ON users.id = comments.author_id
+    WHERE comments.id = ?
+  `);
+  const resolveCommentRow = db.prepare(
+    `UPDATE comments SET resolved_at = ? WHERE id = ?`,
+  );
+  const deleteCommentRow = db.prepare(`DELETE FROM comments WHERE id = ?`);
+  const deleteCommentsForDocument = db.prepare(
+    `DELETE FROM comments WHERE document_id = ?`,
+  );
+
+  type CommentRow = {
+    id: string;
+    document_id: string;
+    author_id: string;
+    body: string;
+    quote: string;
+    anchor_id: string;
+    created_at: string;
+    resolved_at: string | null;
+    author_name: string;
+    author_email: string;
+  };
+
+  function rowToComment(row: CommentRow): PaperComment {
+    return {
+      id: row.id,
+      documentId: row.document_id,
+      authorId: row.author_id,
+      authorName: row.author_name,
+      authorEmail: row.author_email,
+      body: row.body,
+      quote: row.quote,
+      anchorId: row.anchor_id,
+      createdAt: row.created_at,
+      resolvedAt: row.resolved_at,
+    };
+  }
+
+  type VersionRow = {
+    id: string;
+    document_id: string;
+    title: string;
+    content_html: string;
+    created_at: string;
+    created_by: string;
+    created_by_name?: string;
+  };
+
+  function rowToVersion(row: VersionRow): DocumentVersion {
+    return {
+      id: row.id,
+      documentId: row.document_id,
+      title: row.title,
+      contentHtml: row.content_html,
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+      createdByName: row.created_by_name ?? "",
+    };
+  }
+
+  function snapshot(
+    document: PaperDocument,
+    userId: string,
+    contentChanged: boolean,
+  ) {
+    const latest = selectLatestVersion.get(document.id) as VersionRow | undefined;
+    if (!latest) {
+      insertVersion.run(
+        randomUUID(),
+        document.id,
+        document.title,
+        document.contentHtml,
+        document.updatedAt,
+        userId,
+      );
+      return;
+    }
+    if (latest.title === document.title && latest.content_html === document.contentHtml) {
+      return;
+    }
+    if (!contentChanged) {
+      updateVersionTitle.run(document.title, latest.id);
+      return;
+    }
+    insertVersion.run(
+      randomUUID(),
+      document.id,
+      document.title,
+      document.contentHtml,
+      document.updatedAt,
+      userId,
+    );
+  }
 
   function requireAccessible(userId: string, documentId: string): EditResult {
     const existing = selectById.get(documentId.trim()) as DocumentRow | undefined;
@@ -296,10 +548,11 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
         document.createdAt,
         document.updatedAt,
       );
+      snapshot(document, owner, true);
       return { ok: true, document };
     },
 
-    importFile({ ownerId, filename: uploadName, bytes }) {
+    importFile({ ownerId, filename: uploadName, bytes, repairMarkdown: shouldRepair }) {
       const owner = ownerId.trim();
       if (!owner) {
         return {
@@ -309,7 +562,11 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
         };
       }
 
-      const imported = importUploadedFile({ filename: uploadName, bytes });
+      const imported = importUploadedFile({
+        filename: uploadName,
+        bytes,
+        repairMarkdown: shouldRepair,
+      });
       if (!imported.ok) {
         return imported;
       }
@@ -332,6 +589,7 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
         document.createdAt,
         document.updatedAt,
       );
+      snapshot(document, owner, true);
 
       return { ok: true, document };
     },
@@ -407,6 +665,152 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
       return { ok: true };
     },
 
+    unshareDocument({ documentId, ownerId, recipientEmail }) {
+      const email = recipientEmail.trim().toLowerCase();
+      if (!email) {
+        return {
+          ok: false,
+          code: "RECIPIENT_REQUIRED",
+          error: "An email is required to unshare.",
+        };
+      }
+
+      const row = selectById.get(documentId.trim()) as DocumentRow | undefined;
+      if (!row) {
+        return {
+          ok: false,
+          code: "NOT_FOUND",
+          error: "Document not found.",
+        };
+      }
+      const document = rowToDocument(row);
+      if (document.ownerId !== ownerId.trim()) {
+        return {
+          ok: false,
+          code: "FORBIDDEN",
+          error: "Only the owner can unshare this document.",
+        };
+      }
+
+      const recipient = selectUserByEmail.get(email) as UserRow | undefined;
+      if (!recipient) {
+        return {
+          ok: false,
+          code: "USER_NOT_FOUND",
+          error: "No user exists with that email.",
+        };
+      }
+
+      deleteShare.run(document.id, recipient.id);
+      return { ok: true };
+    },
+
+    leaveDocument({ userId, documentId }) {
+      const row = selectById.get(documentId.trim()) as DocumentRow | undefined;
+      if (!row) {
+        return {
+          ok: false,
+          code: "NOT_FOUND",
+          error: "Document not found.",
+        };
+      }
+      if (row.owner_id === userId.trim()) {
+        return {
+          ok: false,
+          code: "FORBIDDEN",
+          error: "Owners cannot leave. Delete the document instead.",
+        };
+      }
+
+      const accessible = selectAccessible.get(
+        row.id,
+        userId.trim(),
+        userId.trim(),
+      ) as DocumentRow | undefined;
+      if (!accessible) {
+        return {
+          ok: false,
+          code: "FORBIDDEN",
+          error: "You do not have access to this document.",
+        };
+      }
+
+      deleteShare.run(row.id, userId.trim());
+      return { ok: true };
+    },
+
+    duplicateDocument({ userId, documentId }) {
+      const access = requireAccessible(userId, documentId);
+      if (!access.ok) {
+        return access;
+      }
+
+      const now = new Date().toISOString();
+      const document: PaperDocument = {
+        id: randomUUID(),
+        title: `Copy of ${access.document.title}`,
+        contentHtml: access.document.contentHtml,
+        ownerId: userId.trim(),
+        createdAt: now,
+        updatedAt: now,
+      };
+      insertDocument.run(
+        document.id,
+        document.title,
+        document.contentHtml,
+        document.ownerId,
+        document.createdAt,
+        document.updatedAt,
+      );
+      snapshot(document, document.ownerId, true);
+      return { ok: true, document };
+    },
+
+    listRecipients({ userId, documentId }) {
+      const row = selectById.get(documentId.trim()) as DocumentRow | undefined;
+      if (!row) {
+        return {
+          ok: false,
+          code: "NOT_FOUND",
+          error: "Document not found.",
+        };
+      }
+      if (row.owner_id !== userId.trim()) {
+        return {
+          ok: false,
+          code: "FORBIDDEN",
+          error: "Only the owner can share this document.",
+        };
+      }
+
+      const recipients = selectRecipients.all(row.id) as Recipient[];
+      return { ok: true, recipients };
+    },
+
+    deleteDocument({ userId, documentId }) {
+      const row = selectById.get(documentId.trim()) as DocumentRow | undefined;
+      if (!row) {
+        return {
+          ok: false,
+          code: "NOT_FOUND",
+          error: "Document not found.",
+        };
+      }
+      if (row.owner_id !== userId.trim()) {
+        return {
+          ok: false,
+          code: "FORBIDDEN",
+          error: "Only the owner can delete this document.",
+        };
+      }
+
+      deleteSharesForDocument.run(row.id);
+      deleteVersionsForDocument.run(row.id);
+      deleteCommentsForDocument.run(row.id);
+      deleteDocumentRow.run(row.id);
+      return { ok: true };
+    },
+
     renameDocument({ userId, documentId, title }) {
       const access = requireAccessible(userId, documentId);
       if (!access.ok) {
@@ -423,11 +827,10 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
       }
 
       const now = new Date().toISOString();
+      const document = { ...access.document, title: trimmedTitle, updatedAt: now };
       updateTitle.run(trimmedTitle, now, access.document.id);
-      return {
-        ok: true,
-        document: { ...access.document, title: trimmedTitle, updatedAt: now },
-      };
+      snapshot(document, userId.trim(), false);
+      return { ok: true, document };
     },
 
     saveContent({ userId, documentId, contentHtml }) {
@@ -438,11 +841,152 @@ export function createDocumentStore(filename = ":memory:"): DocumentStore {
 
       const cleaned = sanitizeHtml(contentHtml);
       const now = new Date().toISOString();
+      const document = { ...access.document, contentHtml: cleaned, updatedAt: now };
       updateContent.run(cleaned, now, access.document.id);
-      return {
-        ok: true,
-        document: { ...access.document, contentHtml: cleaned, updatedAt: now },
+      snapshot(document, userId.trim(), true);
+      return { ok: true, document };
+    },
+
+    listVersions({ userId, documentId }) {
+      const access = requireAccessible(userId, documentId);
+      if (!access.ok) {
+        return access;
+      }
+      const versions = (selectVersions.all(access.document.id) as VersionRow[]).map(
+        rowToVersion,
+      );
+      return { ok: true, versions };
+    },
+
+    restoreVersion({ userId, documentId, versionId }) {
+      const access = requireAccessible(userId, documentId);
+      if (!access.ok) {
+        return access;
+      }
+      const row = selectVersionById.get(versionId.trim()) as VersionRow | undefined;
+      if (!row || row.document_id !== access.document.id) {
+        return {
+          ok: false,
+          code: "NOT_FOUND",
+          error: "Version not found.",
+        };
+      }
+      const now = new Date().toISOString();
+      updateTitle.run(row.title, now, access.document.id);
+      updateContent.run(row.content_html, now, access.document.id);
+      const document = {
+        ...access.document,
+        title: row.title,
+        contentHtml: row.content_html,
+        updatedAt: now,
       };
+      snapshot(document, userId.trim(), true);
+      return { ok: true, document };
+    },
+
+    addComment({ userId, documentId, body, quote, anchorId }) {
+      const access = requireAccessible(userId, documentId);
+      if (!access.ok) {
+        return access;
+      }
+      const trimmed = body.trim();
+      if (!trimmed) {
+        return {
+          ok: false,
+          code: "COMMENT_REQUIRED",
+          error: "A comment is required.",
+        };
+      }
+      const author = selectUserById.get(userId.trim()) as UserRow | undefined;
+      if (!author) {
+        return {
+          ok: false,
+          code: "FORBIDDEN",
+          error: "You do not have access to this document.",
+        };
+      }
+      const comment: PaperComment = {
+        id: randomUUID(),
+        documentId: access.document.id,
+        authorId: author.id,
+        authorName: author.name,
+        authorEmail: author.email,
+        body: trimmed,
+        quote: (quote ?? "").trim(),
+        anchorId: (anchorId ?? "").trim(),
+        createdAt: new Date().toISOString(),
+        resolvedAt: null,
+      };
+      insertComment.run(
+        comment.id,
+        comment.documentId,
+        comment.authorId,
+        comment.body,
+        comment.quote,
+        comment.anchorId,
+        comment.createdAt,
+      );
+      return { ok: true, comment };
+    },
+
+    listComments({ userId, documentId }) {
+      const access = requireAccessible(userId, documentId);
+      if (!access.ok) {
+        return access;
+      }
+      const comments = (selectComments.all(access.document.id) as CommentRow[]).map(
+        rowToComment,
+      );
+      return { ok: true, comments };
+    },
+
+    resolveComment({ userId, documentId, commentId }) {
+      const access = requireAccessible(userId, documentId);
+      if (!access.ok) {
+        return access;
+      }
+      const row = selectCommentById.get(commentId.trim()) as CommentRow | undefined;
+      if (!row || row.document_id !== access.document.id) {
+        return {
+          ok: false,
+          code: "NOT_FOUND",
+          error: "Comment not found.",
+        };
+      }
+      const resolvedAt = row.resolved_at ?? new Date().toISOString();
+      if (!row.resolved_at) {
+        resolveCommentRow.run(resolvedAt, row.id);
+      }
+      return { ok: true, comment: { ...rowToComment(row), resolvedAt } };
+    },
+
+    deleteComment({ userId, documentId, commentId }) {
+      const access = requireAccessible(userId, documentId);
+      if (!access.ok) {
+        return {
+          ok: false,
+          code: access.code === "NOT_FOUND" ? "NOT_FOUND" : "FORBIDDEN",
+          error: access.error,
+        };
+      }
+      const row = selectCommentById.get(commentId.trim()) as CommentRow | undefined;
+      if (!row || row.document_id !== access.document.id) {
+        return {
+          ok: false,
+          code: "NOT_FOUND",
+          error: "Comment not found.",
+        };
+      }
+      const actor = userId.trim();
+      if (row.author_id !== actor && access.document.ownerId !== actor) {
+        return {
+          ok: false,
+          code: "FORBIDDEN",
+          error: "Only the commenter or owner can delete this comment.",
+        };
+      }
+      deleteCommentRow.run(row.id);
+      return { ok: true };
     },
 
     listLibrary(userId) {

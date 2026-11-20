@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     ownerId: user.id,
     filename: file.name,
     bytes,
+    repairMarkdown: form.get("repair") === "1",
   });
 
   if (!imported.ok) {

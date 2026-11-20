@@ -11,14 +11,21 @@ export async function GET(
   }
 
   const { id } = await params;
-  const document = getStore().getAccessibleDocument(user.id, id);
+  const store = getStore();
+  const document = store.getAccessibleDocument(user.id, id);
   if (!document) {
     return Response.json({ error: "Document not found." }, { status: 404 });
   }
 
+  const isOwner = document.ownerId === user.id;
+  const recipients = isOwner
+    ? store.listRecipients({ userId: user.id, documentId: id })
+    : null;
+
   return Response.json({
     document,
-    isOwner: document.ownerId === user.id,
+    isOwner,
+    recipients: recipients?.ok ? recipients.recipients : [],
   });
 }
 
@@ -72,4 +79,25 @@ export async function PATCH(
   }
 
   return Response.json({ document, isOwner: document.ownerId === user.id });
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const user = await requireUser();
+  if (!user) {
+    return Response.json({ error: "Not signed in." }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const result = getStore().deleteDocument({
+    userId: user.id,
+    documentId: id,
+  });
+  if (!result.ok) {
+    const status = result.code === "FORBIDDEN" ? 403 : 404;
+    return Response.json({ error: result.error }, { status });
+  }
+  return Response.json({ ok: true });
 }

@@ -8,6 +8,7 @@
  * .docx is out of scope on purpose. It is a zip+XML format and would eat the
  * timebox without making the editor demo stronger.
  */
+import { repairMarkdown } from "./markdown-structure";
 
 export const IMPORT_MAX_BYTES = 1_048_576;
 
@@ -37,6 +38,7 @@ type ImportInput = {
   filename: string;
   bytes: Uint8Array;
   maxBytes?: number;
+  repairMarkdown?: boolean;
 };
 
 const UNSUPPORTED_TYPE_ERROR = "Only .txt and .md files can be imported.";
@@ -72,12 +74,16 @@ export function importUploadedFile(input: ImportInput): ImportResult {
     return fail("INVALID_ENCODING", "The file must be UTF-8 text.");
   }
 
-  const text = decoded
+  let text = decoded
     .replace(/^\uFEFF/, "")
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n");
   if (text.trim() === "") {
     return fail("EMPTY_CONTENT", "The file does not contain any readable text.");
+  }
+
+  if (parsed.sourceType === "md" && input.repairMarkdown) {
+    text = repairMarkdown(text);
   }
 
   const contentHtml =
