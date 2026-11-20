@@ -18,11 +18,11 @@ Local npm uses `web/data/paper.db`. Docker and Render use `DATA_DIR=/data`.
 1. **Editing that feels like a document.** Create, rename, rich text, autosave, reopen. This is the thing reviewers will spend time in.
 2. **Import as the file-upload story.** A `.txt` or `.md` file becomes an editable document. Conversion happens in memory. We do not store the raw upload, which avoids path-traversal on disk.
 3. **Sharing you can demonstrate in two logins.** Owner, grant-by-email, owned vs shared lists (forest green vs slate blue). Recipients can edit. Only the owner can share.
-4. **Tests on the rules, not the framework.** Import, persistence, access, export, versions, comments, and the reviewer journeys are covered by offline Vitest (`cd web && npm test`, 84 tests). Default `npm test` does not open a browser.
+4. **Tests on the rules, not the framework.** Import, persistence, access, export, versions, comments, and the reviewer journeys are covered by offline Vitest (`cd web && npm test`, 86 tests). Default `npm test` does not open a browser.
 
 ## Supplemental (after the core slice)
 
-- Owner delete, owner unshare with a recipient list, recipient leave, duplicate
+- Owner delete (Are you sure? plus type `delete`), owner unshare with a recipient list, recipient leave (type `leave`), duplicate
 - Export to `.md` / `.txt` / a small text PDF (not a print-preview of TipTap)
 - Snapshot version history on body changes; title-only edits update the latest snapshot
 - Comments: `author_id` + `document_id`, TipTap mark (not character offsets) plus a sidebar. Anyone with access can comment or resolve; only the commenter or owner can delete

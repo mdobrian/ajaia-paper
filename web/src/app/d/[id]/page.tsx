@@ -2,6 +2,11 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ConfirmTypedDialog } from "@/components/ConfirmTypedDialog";
+import {
+  DELETE_CONFIRM_WORD,
+  LEAVE_CONFIRM_WORD,
+} from "@/lib/confirm-delete";
 import { DocumentEditor } from "@/components/DocumentEditor";
 import type {
   DocumentVersion,
@@ -33,6 +38,8 @@ export default function DocumentPage() {
   const [commentQuote, setCommentQuote] = useState("");
   const [commentAnchorId, setCommentAnchorId] = useState("");
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [pendingLeave, setPendingLeave] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -253,9 +260,7 @@ export default function DocumentPage() {
   }
 
   async function removeDocument() {
-    if (!window.confirm("Delete this document for everyone who has access?")) {
-      return;
-    }
+    setPendingDelete(false);
     setBusy(true);
     const response = await fetch(`/api/documents/${params.id}`, { method: "DELETE" });
     const payload = (await response.json()) as { error?: string };
@@ -268,9 +273,7 @@ export default function DocumentPage() {
   }
 
   async function leave() {
-    if (!window.confirm("Remove this document from your Shared with me list?")) {
-      return;
-    }
+    setPendingLeave(false);
     setBusy(true);
     const response = await fetch(`/api/documents/${params.id}/leave`, {
       method: "POST",
@@ -377,7 +380,7 @@ export default function DocumentPage() {
             className="rounded-md px-3 py-1.5 text-danger disabled:opacity-60"
             type="button"
             disabled={busy}
-            onClick={() => void removeDocument()}
+            onClick={() => setPendingDelete(true)}
           >
             Delete
           </button>
@@ -386,9 +389,9 @@ export default function DocumentPage() {
             className="rounded-md px-3 py-1.5 text-danger disabled:opacity-60"
             type="button"
             disabled={busy}
-            onClick={() => void leave()}
+            onClick={() => setPendingLeave(true)}
           >
-            Remove from my list
+            Leave
           </button>
         )}
       </div>
@@ -571,6 +574,28 @@ export default function DocumentPage() {
           </ul>
         </aside>
       </div>
+      {pendingDelete && document ? (
+        <ConfirmTypedDialog
+          word={DELETE_CONFIRM_WORD}
+          heading="Delete this document?"
+          description={`“${document.title}” will be removed for everyone who has access. This cannot be undone. Type ${DELETE_CONFIRM_WORD} to confirm.`}
+          confirmLabel="Delete"
+          busy={busy}
+          onCancel={() => setPendingDelete(false)}
+          onConfirm={() => void removeDocument()}
+        />
+      ) : null}
+      {pendingLeave && document ? (
+        <ConfirmTypedDialog
+          word={LEAVE_CONFIRM_WORD}
+          heading="Leave this document?"
+          description={`“${document.title}” will leave your Shared with me list. The owner still has it. Type ${LEAVE_CONFIRM_WORD} to confirm.`}
+          confirmLabel="Leave"
+          busy={busy}
+          onCancel={() => setPendingLeave(false)}
+          onConfirm={() => void leave()}
+        />
+      ) : null}
     </main>
   );
 }

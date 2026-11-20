@@ -28,7 +28,7 @@ This take-home was built in Cursor. AI was used as a pair-programmer, not as a s
 
 ## How we verified
 
-- `cd web && npm test` — offline Vitest, 84 tests, including:
+- `cd web && npm test` — offline Vitest, 86 tests, including:
   - import, sharing, editing
   - markdown inspect/repair
   - export (including PDF)

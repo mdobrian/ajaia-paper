@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Library, PaperDocument, PaperUser } from "@/lib/documents";
+import { ConfirmTypedDialog } from "@/components/ConfirmTypedDialog";
+import {
+  DELETE_CONFIRM_WORD,
+  LEAVE_CONFIRM_WORD,
+} from "@/lib/confirm-delete";
 import {
   inspectMarkdown,
   type MarkdownIssue,
@@ -19,6 +24,8 @@ export default function LibraryPage() {
     file: File;
     issues: MarkdownIssue[];
   } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PaperDocument | null>(null);
+  const [pendingLeave, setPendingLeave] = useState<PaperDocument | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -91,9 +98,7 @@ export default function LibraryPage() {
   }
 
   async function removeOwned(document: PaperDocument) {
-    if (!window.confirm(`Delete “${document.title}” for everyone who has access?`)) {
-      return;
-    }
+    setPendingDelete(null);
     setBusy(true);
     const response = await fetch(`/api/documents/${document.id}`, { method: "DELETE" });
     const payload = (await response.json()) as { error?: string };
@@ -106,9 +111,7 @@ export default function LibraryPage() {
   }
 
   async function leaveShared(document: PaperDocument) {
-    if (!window.confirm(`Remove “${document.title}” from Shared with me?`)) {
-      return;
-    }
+    setPendingLeave(null);
     setBusy(true);
     const response = await fetch(`/api/documents/${document.id}/leave`, {
       method: "POST",
@@ -224,7 +227,7 @@ export default function LibraryPage() {
           documents={library.owned}
           empty="You have not created a document yet."
           actionLabel="Delete"
-          onAction={(document) => void removeOwned(document)}
+          onAction={(document) => setPendingDelete(document)}
         />
       </section>
 
@@ -234,10 +237,32 @@ export default function LibraryPage() {
           kind="shared"
           documents={library.shared}
           empty="Nothing has been shared with you yet."
-          actionLabel="Remove"
-          onAction={(document) => void leaveShared(document)}
+          actionLabel="Leave"
+          onAction={(document) => setPendingLeave(document)}
         />
       </section>
+      {pendingDelete ? (
+        <ConfirmTypedDialog
+          word={DELETE_CONFIRM_WORD}
+          heading="Delete this document?"
+          description={`“${pendingDelete.title}” will be removed for everyone who has access. This cannot be undone. Type ${DELETE_CONFIRM_WORD} to confirm.`}
+          confirmLabel="Delete"
+          busy={busy}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => void removeOwned(pendingDelete)}
+        />
+      ) : null}
+      {pendingLeave ? (
+        <ConfirmTypedDialog
+          word={LEAVE_CONFIRM_WORD}
+          heading="Leave this document?"
+          description={`“${pendingLeave.title}” will leave your Shared with me list. The owner still has it. Type ${LEAVE_CONFIRM_WORD} to confirm.`}
+          confirmLabel="Leave"
+          busy={busy}
+          onCancel={() => setPendingLeave(null)}
+          onConfirm={() => void leaveShared(pendingLeave)}
+        />
+      ) : null}
     </main>
   );
 }

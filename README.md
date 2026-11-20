@@ -31,7 +31,7 @@ Owned cards are forest green (**Yours**). Shared cards are slate blue (**Shared*
 - Seeded login and email sharing; only the owner can share; recipients can edit
 - Owned vs shared lists, color-coded
 - SQLite persistence across refresh
-- Supplemental: owner delete, owner unshare, recipient leave, duplicate, export `.md` / `.txt` / PDF, snapshot version history, comments (author + document, TipTap mark + sidebar)
+- Supplemental: owner delete (type `delete` to confirm), owner unshare, recipient leave (type `leave` to confirm), duplicate, export `.md` / `.txt` / PDF, snapshot version history, comments (author + document, TipTap mark + sidebar)
 
 Intentionally out of scope: real-time collaboration, viewer-vs-editor roles, suggestion mode, `.docx` import, Drive uploads.
 
@@ -63,4 +63,4 @@ cd web
 npm test
 ```
 
-Offline Vitest, 84 tests. They cover import, sharing, editing, markdown inspect/repair, export, versions, comments, and the reviewer journeys. They do not open a browser or talk to a live service.
+Offline Vitest, 86 tests. They cover import, sharing, editing, markdown inspect/repair, export, versions, comments, and the reviewer journeys. They do not open a browser or talk to a live service.
