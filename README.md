@@ -2,34 +2,11 @@
 
 Lightweight collaborative documents for the Ajaia take-home. Built as a deep slice, not a Google Docs clone.
 
-There is no public website on purpose. You run it on your machine. Ajaia reviewers run the same app with Docker on theirs.
+## Live demo
 
-## For Ajaia reviewers (Docker)
+**https://ajaia-paper.onrender.com**
 
-You need [Docker Desktop](https://www.docker.com/products/docker-desktop/). Then from the project root:
-
-```bash
-docker compose up --build
-```
-
-Open http://localhost:3000
-
-Sign in with a seeded account below. Data is stored in a local Docker volume named `paper-data`, so refresh and restart keep documents. Stop with `Ctrl+C`, or `docker compose down`.
-
-Live demo for Ajaia: a separate Render web service built from the repo-root Dockerfile. Do not deploy this onto the existing StudLab service.
-
-## For local development (npm)
-
-The app lives in `web/`.
-
-```bash
-cd web
-npm install
-npm test
-npm run dev
-```
-
-Open http://localhost:3000
+This is a separate Render service. It is not StudLab. The first load after idle time can take a minute on the free plan.
 
 ## Reviewer accounts
 
@@ -50,6 +27,25 @@ Suggested sharing path: sign in as Alex, open **Welcome to Paper**, share with `
 - Import `.txt` and `.md` only (Word, PDF, and images are rejected in the UI)
 - Seeded login and email sharing, with owned vs shared lists
 - SQLite persistence across refresh
+
+## Run locally with npm
+
+```bash
+cd web
+npm install
+npm test
+npm run dev
+```
+
+Open http://localhost:3000
+
+## Run locally with Docker
+
+```bash
+docker compose up --build
+```
+
+Open http://localhost:3000
 
 ## Tests
 
