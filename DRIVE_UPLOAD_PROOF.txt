@@ -1,0 +1,14 @@
+This screenshot was taken from Google Drive after the packet was uploaded.
+
+Visible Drive timestamps (Eastern, Fri Nov 20, 2026):
+
+- ARCHITECTURE.md — 1:55 PM
+- AI_WORKFLOW.md — 1:55 PM
+- WALKTHROUGH.txt — 1:55 PM
+- SUBMISSION.md — 2:28 PM
+- ajaia-paper-drive.zip — 2:29 PM
+- README.md — 2:35 PM
+
+The assessment form closed while share links were being created. The files were already in Drive. Do not treat a later zip upload as the first submission.
+
+See DRIVE_UPLOAD_PROOF.png in this folder.
